@@ -1,0 +1,45 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: bookmyshow-db
+    environment:
+      MYSQL_ROOT_PASSWORD: Root@123
+      MYSQL_DATABASE: BookMyShows
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./src/main/resources/nbms.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bookmyshow-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookmyshow-api
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/BookMyShows?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Root@123
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "9090:9090"
+    networks:
+      - bookmyshow-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+
+networks:
+  bookmyshow-network:
+    driver: bridge
